@@ -12,12 +12,14 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import resnet
+import lightnet
 
 model_names = sorted(name for name in resnet.__dict__
     if name.islower() and not name.startswith("__")
                      and name.startswith("resnet")
                      and callable(resnet.__dict__[name]))
 
+model_names.append('lightnet')
 print(model_names)
 
 parser = argparse.ArgumentParser(description='Propert ResNets for CIFAR10 in pytorch')
@@ -67,7 +69,10 @@ def main():
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
 
-    model = torch.nn.DataParallel(resnet.__dict__[args.arch]())
+    if args.arch == "lightnet":
+        model = torch.nn.DataParallel(lightnet.lightnet())
+    else:
+        model = torch.nn.DataParallel(resnet.__dict__[args.arch]())
     model.cuda()
 
     # optionally resume from a checkpoint
