@@ -1,7 +1,7 @@
 #!/bin/bash
-
+t="`date +%y%m%d%H%M%S`"
 for model in lightnet
 do
-    echo "python -u trainer.py  --arch=$model  --save-dir=save_$model |& tee -a log_$model"
-    python -u trainer.py  --arch=$model  --save-dir=save_$model |& tee -a log_$model
+    echo "python -u trainer.py  --arch=$model  --save-dir=save_$model$t |& tee -a log_$model$t"
+    python -u trainer.py  --arch=$model  --save-dir=save_$model$t |& tee -a log_$model$t
 done

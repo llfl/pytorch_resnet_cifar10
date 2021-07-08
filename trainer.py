@@ -13,6 +13,10 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import resnet
 import lightnet
+import quan
+import munch
+import yaml
+import torchsummary
 
 model_names = sorted(name for name in resnet.__dict__
     if name.islower() and not name.startswith("__")
@@ -57,6 +61,8 @@ parser.add_argument('--save-dir', dest='save_dir',
 parser.add_argument('--save-every', dest='save_every',
                     help='Saves checkpoints at every specified number of epochs',
                     type=int, default=10)
+parser.add_argument('--quan', dest='quan', action='store_true',
+                    help='use quaned model')
 best_prec1 = 0
 
 
@@ -70,10 +76,22 @@ def main():
         os.makedirs(args.save_dir)
 
     if args.arch == "lightnet":
-        model = torch.nn.DataParallel(lightnet.lightnet())
+        model = lightnet.lightnet()
     else:
-        model = torch.nn.DataParallel(resnet.__dict__[args.arch]())
+        model = resnet.__dict__[args.arch]()
+
+    if args.quan:
+        print("quan init")
+        with open('config.yaml') as yaml_file:
+            cfg = yaml.safe_load(yaml_file)
+        quanargs = munch.munchify(cfg)
+        replaced_modules = quan.find_modules_to_quantize(model, quanargs.quan)
+        model = quan.replace_module_by_names(model, replaced_modules)
+    print(model)
+    model = torch.nn.DataParallel(model)
     model.cuda()
+    torchsummary.summary(model, (3, 32, 32))
+
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -156,7 +174,11 @@ def main():
                 'state_dict': model.state_dict(),
                 'best_prec1': best_prec1,
             }, is_best, filename=os.path.join(args.save_dir, 'checkpoint.th'))
-
+        if is_best :
+            save_checkpoint({
+                'state_dict': model.state_dict(),
+                'best_prec1': best_prec1,
+            }, is_best, filename=os.path.join(args.save_dir, 'model_best.th'))
         save_checkpoint({
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,

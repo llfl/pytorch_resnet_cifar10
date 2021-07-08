@@ -1,0 +1,56 @@
+#===============================================================================
+#                      Default Configuration for LSQ-Net
+#===============================================================================
+# Please do NOT modify this file directly. If you want to modify configurations,
+# please:
+# 1. Create a new YAML file and copy some bellowing options to it.
+# 2. Modify these options in your YAML file.
+# 3. run main.py with your configuration file in the command line, like this:
+#       $ python main.py path/to/your/config/file
+# The options modified in your configuration file will overwrite those in this
+# file.
+#============================ Environment ======================================
+
+
+#============================ Quantization =====================================
+
+quan:
+  act: # (default for all layers)
+    # Quantizer type (choices: lsq)
+    mode: lsq
+    # Bit width of quantized activation
+    bit: 3
+    # Each output channel uses its own scaling factor
+    per_channel: false
+    # Whether to use symmetric quantization
+    symmetric: false
+    # Quantize all the numbers to non-negative
+    all_positive: true
+  weight: # (default for all layers)
+    # Quantizer type (choices: lsq)
+    mode: lsq
+    # Bit width of quantized weight
+    bit: 3
+    # Each output channel uses its own scaling factor
+    per_channel: true
+    # Whether to use symmetric quantization
+    symmetric: false
+    # Whether to quantize all the numbers to non-negative
+    all_positive: false
+  excepts:
+    # Specify quantized bit width for some layers, like this:
+    stem:
+      act:
+        all_positive: false
+      weight:
+        bit:
+    conv1:
+      act:
+        all_positive: false
+      weight:
+        bit:
+    fc:
+      act:
+        bit:
+      weight:
+        bit:

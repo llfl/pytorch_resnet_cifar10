@@ -24,21 +24,21 @@ class lightnet(nn.Module):
         super(lightnet, self).__init__()
         self.stem = nn.Conv2d(
             in_channels=3, 
-            out_channels=48,
+            out_channels=64,
             kernel_size=3,
             stride=1,
             padding=1)
-        self.bn0 = nn.BatchNorm2d(48)
+        self.bn0 = nn.BatchNorm2d(64)
 
-        self.layer1  = lightconv(48, 64) 
+        self.layer1  = lightconv(64, 64) 
         self.layer2  = lightconv(64, 64)
         self.layer3  = lightconv(64, 128)
-        self.layer4  = lightconv(128, 84) 
-        self.layer5  = lightconv(84, 64)
+        self.layer4  = lightconv(128, 64) 
+        self.layer5  = lightconv(64, 64)
         self.layer6  = lightconv(64, 64)
-        self.layer7  = lightconv(64, 48) 
-        self.layer8  = lightconv(48, 48)
-        self.layer9  = lightconv(48, 32)
+        self.layer7  = lightconv(64, 64) 
+        self.layer8  = lightconv(64, 32)
+        self.layer9  = lightconv(32, 32)
         self.layer10 = lightconv(32, 10)
 
         self.pooling = nn.MaxPool2d(2)
