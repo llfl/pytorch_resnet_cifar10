@@ -14,16 +14,16 @@ class rpcnet(nn.Module):
         self.deploy = deploy
         self.bn0 = nn.BatchNorm2d(64)
 
-        self.layer1  = RPConv(64, 64 , deploy=self.deploy) 
-        self.layer2  = RPConv(64, 64 , stride=2, padding=(0,1,0,1), deploy=self.deploy)
-        self.layer3  = RPConv(64, 128, deploy=self.deploy)
-        self.layer4  = RPConv(128, 64, stride=2, padding=(0,1,0,1), deploy=self.deploy) 
-        self.layer5  = RPConv(64, 64, deploy=self.deploy)
-        self.layer6  = RPConv(64, 64 , stride=2, padding=(0,1,0,1), deploy=self.deploy)
-        self.layer7  = RPConv(64, 64, deploy=self.deploy) 
-        self.layer8  = RPConv(64, 32 , stride=2, padding=(0,1,0,1), deploy=self.deploy)
-        self.layer9  = RPConv(32, 32, deploy=self.deploy)
-        self.layer10 = RPConv(32, 10 , stride=2, padding=(0,1,0,1), deploy=self.deploy)
+        self.layer1  = RPConv(64, 64 , deploy=self.deploy, scaling=False) 
+        self.layer2  = RPConv(64, 64 , deploy=self.deploy, scaling=True)
+        self.layer3  = RPConv(64, 128, deploy=self.deploy, scaling=False)
+        self.layer4  = RPConv(128, 64, deploy=self.deploy, scaling=True) 
+        self.layer5  = RPConv(64, 64,  deploy=self.deploy, scaling=False)
+        self.layer6  = RPConv(64, 64 , deploy=self.deploy, scaling=True)
+        self.layer7  = RPConv(64, 64,  deploy=self.deploy, scaling=False) 
+        self.layer8  = RPConv(64, 32 , deploy=self.deploy, scaling=True)
+        self.layer9  = RPConv(32, 32,  deploy=self.deploy, scaling=False)
+        self.layer10 = RPConv(32, 10 , deploy=self.deploy, scaling=True)
 
     def forward(self, x):
 

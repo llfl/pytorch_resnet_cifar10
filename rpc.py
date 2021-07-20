@@ -13,7 +13,7 @@ def conv_bn(in_channels, out_channels, kernel_size, stride, padding=None, dilati
 
 class RPConv(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1,
-                 padding=None,dilation=1, groups=1, kernel_size=3, deploy=False, scaling=False):
+                 padding=None,dilation=1, groups=1, kernel_size=3, deploy=False, scaling=False, custom=False):
         super(RPConv, self).__init__()
         self.deploy = deploy
         self.groups = groups
@@ -21,6 +21,17 @@ class RPConv(nn.Module):
         self.scaling = scaling
 
         assert kernel_size == 3 or kernel_size == 1
+
+        if self.scaling:
+            self.stride = 2
+            self.padding = (0,1,0,1)
+        else:
+            self.stride = 1
+            self.padding = 1
+
+        if custom:
+            self.stride = stride
+            self.padding = padding
 
         #   Considering dilation, the actuall size of rbr_dense is  kernel_size + 2*(dilation - 1)
         #   For the same output size:     (padding - padding_11) ==  (kernel_size + 2*(dilation - 1) - 1) // 2
@@ -37,12 +48,12 @@ class RPConv(nn.Module):
             if not padding:
                 self.reparam_block.add_module('padding', nn.ZeroPad2d(padding))
             self.reparam_block.add_module('conv', nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                 kernel_size=kernel_size, stride=stride, dilation=dilation, groups=groups, bias=False))
+                 kernel_size=kernel_size, stride=self.stride, dilation=dilation, groups=groups, bias=False))
 
         else:
-            self.rpc_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and stride == 1 else None
-            self.rpc_dense = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups)
-            self.rpc_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=stride, padding=padding_11, groups=groups)
+            self.rpc_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and self.stride == 1 else None
+            self.rpc_dense = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=self.stride, padding=self.padding, dilation=dilation, groups=groups)
+            self.rpc_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=self.stride, padding=self.padding, groups=groups)
 
     def forward(self, inputs):
         if hasattr(self, 'reparam'):
