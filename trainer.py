@@ -13,6 +13,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import resnet
 import lightnet
+import rpcnet
 import quan
 import munch
 import yaml
@@ -77,6 +78,8 @@ def main():
 
     if args.arch == "lightnet":
         model = lightnet.lightnet()
+    elif args.arch == "rpcnet":
+        model = rpcnet.rpcnet(deploy=False)
     else:
         model = resnet.__dict__[args.arch]()
 
