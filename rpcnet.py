@@ -25,6 +25,8 @@ class rpcnet(nn.Module):
         self.layer9  = RPConv(32, 32,  deploy=self.deploy, scaling=False)
         self.layer10 = RPConv(32, 10 , deploy=self.deploy, scaling=True)
 
+        self.act = nn.ReLU()
+
     def forward(self, x):
 
         # stem

@@ -4,7 +4,7 @@ import torch
 
 def conv_bn(in_channels, out_channels, kernel_size, stride, padding=None, dilation=1, groups=1):
     result = nn.Sequential()
-    if not padding:
+    if padding:
         result.add_module('padding', nn.ZeroPad2d(padding))
     result.add_module('conv', nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
                  kernel_size=kernel_size, stride=stride, dilation=dilation, groups=groups, bias=False))
@@ -25,10 +25,11 @@ class RPConv(nn.Module):
         if self.scaling:
             self.stride = 2
             self.padding = (0,1,0,1)
+            self.padding11 = 0
         else:
             self.stride = 1
             self.padding = 1
-
+            self.padding11 = 0
         if custom:
             self.stride = stride
             self.padding = padding
@@ -53,7 +54,7 @@ class RPConv(nn.Module):
         else:
             self.rpc_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and self.stride == 1 else None
             self.rpc_dense = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=self.stride, padding=self.padding, dilation=dilation, groups=groups)
-            self.rpc_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=self.stride, padding=self.padding, groups=groups)
+            self.rpc_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=self.stride, padding=self.padding11, groups=groups)
 
     def forward(self, inputs):
         if hasattr(self, 'reparam'):
@@ -63,8 +64,8 @@ class RPConv(nn.Module):
             id_out = 0
         else:
             id_out = self.rpc_identity(inputs)
-        
         return self.nonlinearity(self.rpc_dense(inputs) + self.rpc_1x1(inputs) + id_out)
+        
 
     #   This func derives the equivalent kernel and bias in a DIFFERENTIABLE way.
     #   You can get the equivalent kernel and bias at any time and do whatever you want,
@@ -126,3 +127,13 @@ class RPConv(nn.Module):
         self.__delattr__('rpc_1x1')
         if hasattr(self, 'rpc_identity'):
             self.__delattr__('rpc_identity')
+
+def repvgg_model_convert(model:torch.nn.Module, save_path=None, do_copy=True):
+    if do_copy:
+        model = copy.deepcopy(model)
+    for module in model.modules():
+        if hasattr(module, 'switch_to_deploy'):
+            module.switch_to_deploy()
+    if save_path is not None:
+        torch.save(model.state_dict(), save_path)
+    return model
