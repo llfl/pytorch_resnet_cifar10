@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from rpc import RPConv
 
-class rpcnet(nn.Model):
+class rpcnet(nn.Module):
     def __init__(self, deploy=False):
         super(rpcnet,self).__init__()
         self.stem = nn.Conv2d(
