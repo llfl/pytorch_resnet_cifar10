@@ -29,17 +29,18 @@ class lightnet(nn.Module):
             stride=1,
             padding=1)
         self.bn0 = nn.BatchNorm2d(64)
+        expand = 2
 
-        self.layer1  = lightconv(64, 64) 
-        self.layer2  = lightconv(64, 64)
-        self.layer3  = lightconv(64, 128)
-        self.layer4  = lightconv(128, 64) 
-        self.layer5  = lightconv(64, 64)
-        self.layer6  = lightconv(64, 64)
-        self.layer7  = lightconv(64, 64) 
-        self.layer8  = lightconv(64, 32)
-        self.layer9  = lightconv(32, 32)
-        self.layer10 = lightconv(32, 10)
+        self.layer1  = lightconv(64,  64) 
+        self.layer2  = lightconv(64 *expand, 64 *expand)
+        self.layer3  = lightconv(64 *expand, 128*expand)
+        self.layer4  = lightconv(128*expand, 64 *expand) 
+        self.layer5  = lightconv(64 *expand, 64 *expand)
+        self.layer6  = lightconv(64 *expand, 64 *expand)
+        self.layer7  = lightconv(64 *expand, 64 *expand) 
+        self.layer8  = lightconv(64 *expand, 32 *expand)
+        self.layer9  = lightconv(32 *expand, 32 *expand)
+        self.layer10 = lightconv(32 *expand, 10)
 
         self.pooling = nn.MaxPool2d(2)
         self.act = nn.ReLU()
