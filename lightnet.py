@@ -31,7 +31,7 @@ class lightnet(nn.Module):
         self.bn0 = nn.BatchNorm2d(64)
         expand = 2
 
-        self.layer1  = lightconv(64,  64) 
+        self.layer1  = lightconv(64,  64*expand) 
         self.layer2  = lightconv(64 *expand, 64 *expand)
         self.layer3  = lightconv(64 *expand, 128*expand)
         self.layer4  = lightconv(128*expand, 64 *expand) 
