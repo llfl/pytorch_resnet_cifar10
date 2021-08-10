@@ -26,6 +26,7 @@ model_names = sorted(name for name in resnet.__dict__
 
 model_names.append('lightnet')
 model_names.append('rpcnet')
+model_names.append('rpcnet_deploy')
 print(model_names)
 
 parser = argparse.ArgumentParser(description='Propert ResNets for CIFAR10 in pytorch')
@@ -81,6 +82,28 @@ def main():
         model = lightnet.lightnet()
     elif args.arch == "rpcnet":
         model = rpcnet.rpcnet(deploy=False)
+        if args.quan:
+            print("rpc load")
+            state_dict = torch.load('save_rpcnet210720152658/model_best.th',map_location=torch.device('cpu'))['state_dict']
+            from collections import OrderedDict
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:] # remove module.
+                new_state_dict[name] = v
+            model.load_state_dict(new_state_dict)
+            model = rpcnet.repvgg_model_convert(model)
+    elif args.arch == "rpcnet_deploy":
+        model = rpcnet.rpcnet(deploy=False)
+
+        print("rpc load")
+        state_dict = torch.load('save_rpcnet210720152658/model_best.th',map_location=torch.device('cpu'))['state_dict']
+        from collections import OrderedDict
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:] # remove module.
+            new_state_dict[name] = v
+        model.load_state_dict(new_state_dict)
+        model = rpcnet.repvgg_model_convert(model)
     else:
         model = resnet.__dict__[args.arch]()
 
@@ -176,7 +199,7 @@ def main():
             save_checkpoint({
                 'epoch': epoch + 1,
                 'state_dict': model.state_dict(),
-                'best_prec1': best_prec1,
+                'prec1': prec1,
             }, is_best, filename=os.path.join(args.save_dir, 'checkpoint.th'))
         if is_best :
             save_checkpoint({

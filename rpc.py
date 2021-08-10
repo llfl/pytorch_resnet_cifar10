@@ -18,9 +18,13 @@ class RPConv(nn.Module):
         self.deploy = deploy
         self.groups = groups
         self.in_channels = in_channels
+        self.out_channels = out_channels
         self.scaling = scaling
 
         assert kernel_size == 3 or kernel_size == 1
+        self.kernel_size = kernel_size
+        self.dilation = dilation
+        
 
         if self.scaling:
             self.stride = 2
@@ -44,10 +48,10 @@ class RPConv(nn.Module):
         
         self.nonlinearity = nn.ReLU()
 
-        self.reparam_block = nn.Sequential()
+        
         if deploy:
-            if not padding:
-                self.reparam_block.add_module('padding', nn.ZeroPad2d(padding))
+            self.reparam_block = nn.Sequential()
+            self.reparam_block.add_module('padding', nn.ZeroPad2d(self.padding))
             self.reparam_block.add_module('conv', nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
                  kernel_size=kernel_size, stride=self.stride, dilation=dilation, groups=groups, bias=False))
 
@@ -57,7 +61,7 @@ class RPConv(nn.Module):
             self.rpc_1x1 = conv_bn(in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=self.stride, padding=self.padding11, groups=groups)
 
     def forward(self, inputs):
-        if hasattr(self, 'reparam'):
+        if hasattr(self, 'reparam_block'):
             return self.nonlinearity(self.reparam_block(inputs))
         
         if self.rpc_identity is None:
@@ -112,8 +116,12 @@ class RPConv(nn.Module):
         return kernel * t, beta - running_mean * gamma / std
 
     def switch_to_deploy(self):
-        if hasattr(self, 'reparam'):
+        if hasattr(self, 'reparam_block'):
             return
+        self.reparam_block = nn.Sequential()
+        self.reparam_block.add_module('padding', nn.ZeroPad2d(self.padding))
+        self.reparam_block.add_module('conv', nn.Conv2d(in_channels=self.in_channels, out_channels=self.out_channels,
+                 kernel_size=self.kernel_size, stride=self.stride, dilation=self.dilation, groups=self.groups, bias=False))
         kernel, bias = self.get_equivalent_kernel_bias()
         self.reparam_block.conv = nn.Conv2d(in_channels=self.rpc_dense.conv.in_channels, 
                                      out_channels=self.rpc_dense.conv.out_channels,

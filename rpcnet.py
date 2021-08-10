@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from rpc import RPConv
+import copy
 
 class rpcnet(nn.Module):
     def __init__(self, deploy=False):
@@ -44,3 +45,13 @@ class rpcnet(nn.Module):
         x = self.layer10(x)
 
         return x.view(x.size(0), -1)
+
+def repvgg_model_convert(model:torch.nn.Module, save_path=None, do_copy=True):
+    if do_copy:
+        model = copy.deepcopy(model)
+    for module in model.modules():
+        if hasattr(module, 'switch_to_deploy'):
+            module.switch_to_deploy()
+    if save_path is not None:
+        torch.save(model.state_dict(), save_path)
+    return model
