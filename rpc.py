@@ -118,11 +118,9 @@ class RPConv(nn.Module):
     def switch_to_deploy(self):
         if hasattr(self, 'reparam_block'):
             return
+        kernel, bias = self.get_equivalent_kernel_bias()
         self.reparam_block = nn.Sequential()
         self.reparam_block.add_module('padding', nn.ZeroPad2d(self.padding))
-        self.reparam_block.add_module('conv', nn.Conv2d(in_channels=self.in_channels, out_channels=self.out_channels,
-                 kernel_size=self.kernel_size, stride=self.stride, dilation=self.dilation, groups=self.groups, bias=False))
-        kernel, bias = self.get_equivalent_kernel_bias()
         self.reparam_block.conv = nn.Conv2d(in_channels=self.rpc_dense.conv.in_channels, 
                                      out_channels=self.rpc_dense.conv.out_channels,
                                      kernel_size=self.rpc_dense.conv.kernel_size, stride=self.rpc_dense.conv.stride,
