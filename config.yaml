@@ -32,11 +32,11 @@ quan:
     # Bit width of quantized weight
     bit: 3
     # Each output channel uses its own scaling factor
-    per_channel: true
+    per_channel: false
     # Whether to use symmetric quantization
     symmetric: false
     # Whether to quantize all the numbers to non-negative
-    all_positive: false
+    all_positive: true
   excepts:
     # Specify quantized bit width for some layers, like this:
     stem:

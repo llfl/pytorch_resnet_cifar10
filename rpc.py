@@ -4,16 +4,16 @@ import torch
 
 def conv_bn(in_channels, out_channels, kernel_size, stride, padding=None, dilation=1, groups=1):
     result = nn.Sequential()
-    if padding:
-        result.add_module('padding', nn.ZeroPad2d(padding))
+    # if padding:
+    #     result.add_module('padding', nn.ZeroPad2d(padding))
     result.add_module('conv', nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                 kernel_size=kernel_size, stride=stride, dilation=dilation, groups=groups, bias=False))
+                 kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=False))
     result.add_module('bn', nn.BatchNorm2d(num_features=out_channels))
     return result
 
 class RPConv(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1,
-                 padding=None,dilation=1, groups=1, kernel_size=3, deploy=False, scaling=False, custom=False):
+                 padding=1,dilation=1, groups=1, kernel_size=3, deploy=False, scaling=False, custom=False):
         super(RPConv, self).__init__()
         self.deploy = deploy
         self.groups = groups
@@ -24,36 +24,16 @@ class RPConv(nn.Module):
         assert kernel_size == 3 or kernel_size == 1
         self.kernel_size = kernel_size
         self.dilation = dilation
-        
 
-        if self.scaling:
-            self.stride = 2
-            self.padding = (0,1,0,1)
-            self.padding11 = 0
-        else:
-            self.stride = 1
-            self.padding = 1
-            self.padding11 = 0
-        if custom:
-            self.stride = stride
-            self.padding = padding
+        self.stride = stride
+        self.padding = padding
+        self.padding11 = 0
 
-        #   Considering dilation, the actuall size of rbr_dense is  kernel_size + 2*(dilation - 1)
-        #   For the same output size:     (padding - padding_11) ==  (kernel_size + 2*(dilation - 1) - 1) // 2
-        # padding_11 = padding - (kernel_size + 2*(dilation - 1) - 1) // 2
-        # assert padding_11 >= 0, 'It seems that your configuration of kernelsize (k), padding (p) and dilation (d) will ' \
-        #                         'reduce the output size. In this case, you should crop the input of conv1x1. ' \
-        #                         'Since this is not a common case, we do not consider it. But it is easy to implement (e.g., self.rbr_1x1(inputs[:,:,1:-1,1:-1])). ' \
-        #                         'The common combinations are (k=3,p=1,d=1) (no dilation), (k=3,p=2,d=2) and (k=3,p=4,d=4) (PSPNet).'
-        
         self.nonlinearity = nn.ReLU()
 
-        
         if deploy:
-            self.reparam_block = nn.Sequential()
-            self.reparam_block.add_module('padding', nn.ZeroPad2d(self.padding))
-            self.reparam_block.add_module('conv', nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
-                 kernel_size=kernel_size, stride=self.stride, dilation=dilation, groups=groups, bias=False))
+            self.reparam_block = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
+                 kernel_size=kernel_size, stride=self.stride, padding=1, dilation=dilation, groups=groups, bias=False)
 
         else:
             self.rpc_identity = nn.BatchNorm2d(num_features=in_channels) if out_channels == in_channels and self.stride == 1 else None
@@ -119,14 +99,12 @@ class RPConv(nn.Module):
         if hasattr(self, 'reparam_block'):
             return
         kernel, bias = self.get_equivalent_kernel_bias()
-        self.reparam_block = nn.Sequential()
-        self.reparam_block.add_module('padding', nn.ZeroPad2d(self.padding))
-        self.reparam_block.conv = nn.Conv2d(in_channels=self.rpc_dense.conv.in_channels, 
+        self.reparam_block = nn.Conv2d(in_channels=self.rpc_dense.conv.in_channels, 
                                      out_channels=self.rpc_dense.conv.out_channels,
                                      kernel_size=self.rpc_dense.conv.kernel_size, stride=self.rpc_dense.conv.stride,
                                      padding=self.rpc_dense.conv.padding, dilation=self.rpc_dense.conv.dilation, groups=self.rpc_dense.conv.groups, bias=True)
-        self.reparam_block.conv.weight.data = kernel
-        self.reparam_block.conv.bias.data = bias
+        self.reparam_block.weight.data = kernel
+        self.reparam_block.bias.data = bias
         for para in self.parameters():
             para.detach_()
         self.__delattr__('rpc_dense')

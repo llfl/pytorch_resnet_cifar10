@@ -16,16 +16,17 @@ class rpcnet(nn.Module):
         self.bn0 = nn.BatchNorm2d(64)
 
         self.layer1  = RPConv(64, 64 , deploy=self.deploy, scaling=False) 
-        self.layer2  = RPConv(64, 64 , deploy=self.deploy, scaling=True)
+        self.layer2  = RPConv(64, 64 , deploy=self.deploy, scaling=False)
         self.layer3  = RPConv(64, 128, deploy=self.deploy, scaling=False)
-        self.layer4  = RPConv(128, 64, deploy=self.deploy, scaling=True) 
+        self.layer4  = RPConv(128, 64, deploy=self.deploy, scaling=False) 
         self.layer5  = RPConv(64, 64,  deploy=self.deploy, scaling=False)
-        self.layer6  = RPConv(64, 64 , deploy=self.deploy, scaling=True)
+        self.layer6  = RPConv(64, 64 , deploy=self.deploy, scaling=False)
         self.layer7  = RPConv(64, 64,  deploy=self.deploy, scaling=False) 
-        self.layer8  = RPConv(64, 32 , deploy=self.deploy, scaling=True)
+        self.layer8  = RPConv(64, 32 , deploy=self.deploy, scaling=False)
         self.layer9  = RPConv(32, 32,  deploy=self.deploy, scaling=False)
-        self.layer10 = RPConv(32, 10 , deploy=self.deploy, scaling=True)
+        self.layer10 = RPConv(32, 10 , deploy=self.deploy, scaling=False)
 
+        self.pooling = nn.MaxPool2d(2)
         self.act = nn.ReLU()
 
     def forward(self, x):
@@ -34,14 +35,19 @@ class rpcnet(nn.Module):
         x = self.act(self.bn0(self.stem(x)))
 
         x = self.layer1(x)
+        x = self.pooling(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.pooling(x)
         x = self.layer4(x)
         x = self.layer5(x)
+        x = self.pooling(x)
         x = self.layer6(x)
         x = self.layer7(x)
+        x = self.pooling(x)
         x = self.layer8(x)
         x = self.layer9(x)
+        x = self.pooling(x)
         x = self.layer10(x)
 
         return x.view(x.size(0), -1)

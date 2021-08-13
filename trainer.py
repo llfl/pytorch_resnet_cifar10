@@ -18,6 +18,8 @@ import quan
 import munch
 import yaml
 import torchsummary
+import numpy as np
+import copy
 
 model_names = sorted(name for name in resnet.__dict__
     if name.islower() and not name.startswith("__")
@@ -61,12 +63,76 @@ parser.add_argument('--half', dest='half', action='store_true',
 parser.add_argument('--save-dir', dest='save_dir',
                     help='The directory used to save the trained models',
                     default='save_temp', type=str)
+parser.add_argument('--load', dest='load_dir',
+                    help='Load trained models',
+                    default='', type=str)
 parser.add_argument('--save-every', dest='save_every',
                     help='Saves checkpoints at every specified number of epochs',
                     type=int, default=10)
 parser.add_argument('--quan', dest='quan', action='store_true',
                     help='use quaned model')
 best_prec1 = 0
+
+def load_state(model):
+    if args.load_dir is '':
+        return model
+    print("Load:",args.load_dir)
+    state_dict = torch.load(args.load_dir + '/model_best.th',map_location=torch.device('cpu'))['state_dict']
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = k[7:] # remove module.
+        new_state_dict[name] = v
+    model.load_state_dict(new_state_dict)
+    return model
+
+def cal_branch(branch,dim=None):
+    if isinstance(branch, nn.BatchNorm2d):
+        kernel_value = np.zeros(dim, dtype=np.float32)
+        for i in range(dim[0]):
+            kernel_value[i, i % dim[1], 1, 1] = 1
+        weight = torch.from_numpy(kernel_value).to(branch.weight.device)
+        bn = branch
+    else:
+        weight = branch.conv.weight
+        bn = branch.bn
+        if hasattr(branch.conv, 'quan_w_fn'):
+            scale = branch.conv.quan_w_fn.s
+            print("scale:",scale.view((1, -1)))
+    sample_weight = weight[0][0]
+    running_mean = bn.running_mean
+    running_var = bn.running_var
+    gamma = bn.weight
+    beta = bn.bias
+    eps = bn.eps
+    std = (running_var + eps).sqrt()
+    t = (gamma / std).reshape(-1, 1, 1, 1)
+    out_weight = weight[0][0] * t[0]
+    out_bias = beta - running_mean * gamma / std
+    print(sample_weight)
+    print(running_mean)
+    print(running_var)
+    print(gamma)
+    print(beta)
+    print(eps)
+    print(std)
+    print(t.view((t.size(1), -1)))
+    print("out_weight:",out_weight, out_weight.size())
+    print("out_bias:",out_bias)
+    
+    return out_weight,out_bias
+
+def cal(layer):
+    
+    if hasattr(layer, 'reparam_block'):
+        print(layer.reparam_block.weight[0][0])
+    else:
+        wa,ba = cal_branch(layer.rpc_dense)
+        wb,bb = cal_branch(layer.rpc_1x1)
+        wc,bc = cal_branch(layer.rpc_identity,dim=(64,64,3,3))
+        wb = torch.nn.functional.pad(wb, [1,1,1,1])
+        print((wa+wb+wc))
+
 
 
 def main():
@@ -82,28 +148,11 @@ def main():
         model = lightnet.lightnet()
     elif args.arch == "rpcnet":
         model = rpcnet.rpcnet(deploy=False)
-        if args.quan:
-            print("rpc load")
-            state_dict = torch.load('save_rpcnet210720152658/model_best.th',map_location=torch.device('cpu'))['state_dict']
-            from collections import OrderedDict
-            new_state_dict = OrderedDict()
-            for k, v in state_dict.items():
-                name = k[7:] # remove module.
-                new_state_dict[name] = v
-            model.load_state_dict(new_state_dict)
-            model = rpcnet.repvgg_model_convert(model)
+        model = load_state(model)
     elif args.arch == "rpcnet_deploy":
         model = rpcnet.rpcnet(deploy=False)
-
-        print("rpc load")
-        state_dict = torch.load('save_rpcnet210720152658/model_best.th',map_location=torch.device('cpu'))['state_dict']
-        from collections import OrderedDict
-        new_state_dict = OrderedDict()
-        for k, v in state_dict.items():
-            name = k[7:] # remove module.
-            new_state_dict[name] = v
-        model.load_state_dict(new_state_dict)
-        model = rpcnet.repvgg_model_convert(model)
+        model = load_state(model)
+        # model = rpcnet.repvgg_model_convert(model)
     else:
         model = resnet.__dict__[args.arch]()
 
@@ -115,6 +164,7 @@ def main():
         replaced_modules = quan.find_modules_to_quantize(model, quanargs.quan)
         model = quan.replace_module_by_names(model, replaced_modules)
     print(model)
+    # model = load_state(model)
     model = torch.nn.DataParallel(model)
     model.cuda()
     torchsummary.summary(model, (3, 32, 32))
@@ -179,6 +229,9 @@ def main():
 
     if args.evaluate:
         validate(val_loader, model, criterion)
+        layer = copy.deepcopy(model.module.layer1)
+        cal(layer)
+        cal(rpcnet.repvgg_model_convert(model).module.layer1)
         return
 
     for epoch in range(args.start_epoch, args.epochs):
