@@ -148,7 +148,7 @@ def main():
         model = lightnet.lightnet()
     elif args.arch == "rpcnet":
         model = rpcnet.rpcnet(deploy=False)
-        model = load_state(model)
+        # model = load_state(model)
     elif args.arch == "rpcnet_deploy":
         model = rpcnet.rpcnet(deploy=False)
         model = load_state(model)
@@ -164,7 +164,7 @@ def main():
         replaced_modules = quan.find_modules_to_quantize(model, quanargs.quan)
         model = quan.replace_module_by_names(model, replaced_modules)
     print(model)
-    # model = load_state(model)
+    model = load_state(model)
     model = torch.nn.DataParallel(model)
     model.cuda()
     torchsummary.summary(model, (3, 32, 32))
@@ -230,7 +230,7 @@ def main():
     if args.evaluate:
         validate(val_loader, model, criterion)
         layer = copy.deepcopy(model.module.layer1)
-        cal(layer)
+        # cal(layer)
         cal(rpcnet.repvgg_model_convert(model).module.layer1)
         return
 
